@@ -1,0 +1,291 @@
+// ============================================================================
+// TasteLab — Prisma Schema
+// Implements the approved architecture: multi-tenant-ready (brand_id on all
+// catalog-adjacent tables), dynamic nutrition via a NutritionType lookup,
+// separated review "visibility" (customer-controlled) vs "isHidden"
+// (Kitchen moderation), soft-delete on reviews, one rating+review per
+// customer per food.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------------------------------
+// AUTH (Better Auth compatible models)
+// ----------------------------------------------------------------------------
+
+enum UserRole {
+  CUSTOMER
+  KITCHEN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  role          UserRole  @default(CUSTOMER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+
+  // Customer-side relations
+  ratings  Rating[]
+  reviews  Review[]
+
+  // Kitchen-side relation: a Kitchen user belongs to exactly one Brand
+  kitchenProfile KitchenProfile?
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  idToken               String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verifications")
+}
+
+// ----------------------------------------------------------------------------
+// BRAND — multi-tenancy anchor. v1 ships with exactly one seeded row; every
+// catalog-adjacent table below carries brandId so the platform can expand to
+// multiple brands later without a schema migration.
+// ----------------------------------------------------------------------------
+
+model Brand {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  logoUrl     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  kitchenProfiles KitchenProfile[]
+  categories      Category[]
+  foods           Food[]
+  nutritionTypes  NutritionType[]
+
+  @@map("brands")
+}
+
+model KitchenProfile {
+  id      String @id @default(cuid())
+  userId  String @unique
+  brandId String
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([brandId])
+  @@map("kitchen_profiles")
+}
+
+// ----------------------------------------------------------------------------
+// CATALOG
+// ----------------------------------------------------------------------------
+
+model Category {
+  id        String   @id @default(cuid())
+  brandId   String
+  name      String
+  slug      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  brand Brand  @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  foods Food[]
+
+  @@unique([brandId, slug])
+  @@index([brandId])
+  @@map("categories")
+}
+
+enum FoodType {
+  FOOD
+  DRINK
+}
+
+model Food {
+  id          String   @id @default(cuid())
+  brandId     String
+  categoryId  String
+  name        String
+  slug        String
+  description String   @db.Text
+  type        FoodType @default(FOOD)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  brand    Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  images    FoodImage[]
+  nutrition FoodNutrition[]
+  ratings   Rating[]
+  reviews   Review[]
+
+  @@unique([brandId, slug])
+  @@index([brandId])
+  @@index([categoryId])
+  @@map("foods")
+}
+
+model FoodImage {
+  id        String   @id @default(cuid())
+  foodId    String
+  url       String
+  isPrimary Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  food Food @relation(fields: [foodId], references: [id], onDelete: Cascade)
+
+  @@index([foodId])
+  @@map("food_images")
+}
+
+// ----------------------------------------------------------------------------
+// DYNAMIC NUTRITION SYSTEM
+// NutritionType = the reusable master list Kitchen selects from (keeps
+// naming consistent, e.g. always "Protein" never "protein"/"Proteins").
+// FoodNutrition = the per-food value + explicit display order.
+// ----------------------------------------------------------------------------
+
+model NutritionType {
+  id          String   @id @default(cuid())
+  brandId     String
+  name        String
+  defaultUnit String
+  createdAt   DateTime @default(now())
+
+  brand         Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  foodNutrition FoodNutrition[]
+
+  @@unique([brandId, name])
+  @@index([brandId])
+  @@map("nutrition_types")
+}
+
+model FoodNutrition {
+  id              String @id @default(cuid())
+  foodId          String
+  nutritionTypeId String
+  value           Float
+  unit            String
+  displayOrder    Int    @default(0)
+
+  food          Food          @relation(fields: [foodId], references: [id], onDelete: Cascade)
+  nutritionType NutritionType @relation(fields: [nutritionTypeId], references: [id], onDelete: Restrict)
+
+  @@unique([foodId, nutritionTypeId])
+  @@index([foodId])
+  @@map("food_nutrition")
+}
+
+// ----------------------------------------------------------------------------
+// RATINGS & REVIEWS
+// One rating per (customer, food). Review is optional, 1:1 with the rating.
+// visibility = customer-controlled (public/private).
+// isHidden   = Kitchen moderation soft-delete of the TEXT only — never
+//              touches the numeric rating or its inclusion in the average.
+// ----------------------------------------------------------------------------
+
+model Rating {
+  id        String   @id @default(cuid())
+  userId    String
+  foodId    String
+  value     Int // 1-5
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  food   Food    @relation(fields: [foodId], references: [id], onDelete: Cascade)
+  review Review?
+
+  @@unique([userId, foodId])
+  @@index([foodId])
+  @@map("ratings")
+}
+
+enum ReviewVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+model Review {
+  id         String           @id @default(cuid())
+  userId     String
+  foodId     String
+  ratingId   String           @unique
+  content    String           @db.Text
+  visibility ReviewVisibility @default(PUBLIC)
+  isHidden   Boolean          @default(false) // Kitchen moderation soft-delete
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  food   Food   @relation(fields: [foodId], references: [id], onDelete: Cascade)
+  rating Rating @relation(fields: [ratingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, foodId])
+  @@index([foodId])
+  @@index([userId])
+  @@map("reviews")
+}
