@@ -166,7 +166,10 @@ export function FoodForm({ mode, foodId, categories, nutritionTypes, defaultValu
               });
               toast.success(`${res?.length ?? 0} gambar berhasil diunggah.`);
             }}
-            onUploadError={(error) => toast.error(`Gagal unggah: ${error.message}`)}
+            onUploadError={(error) => {
+              // 🔥 FIX: Bungkus toast.error biar gak return value
+              toast.error(`Gagal unggah: ${error.message}`);
+            }}
           />
         </div>
         {errors.images && <p className="text-xs font-semibold text-red-600">{errors.images.message}</p>}

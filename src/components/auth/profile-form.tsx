@@ -101,7 +101,10 @@ export function ProfileForm({ user, hasPasswordAccount }: ProfileFormProps) {
                 toast.success("Foto berhasil diunggah.");
               }
             }}
-            onUploadError={(error) => toast.error(`Gagal unggah: ${error.message}`)}
+            onUploadError={(error) => {
+              // 🔥 FIX: Bungkus toast.error biar gak return value
+              toast.error(`Gagal unggah: ${error.message}`);
+            }}
           />
         </div>
 
