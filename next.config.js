@@ -14,6 +14,20 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
+      // 🔥 TAMBAHKAN INI BUAT GOOGLE AVATAR
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        port: '',
+        pathname: '/**',
+      },
+      // 🔥 TAMBAHKAN INI BUAT GITHUB AVATAR (KALO PAKE)
+      {
+        protocol: 'https',
+        hostname: 'avatars.githubusercontent.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   typescript: {
