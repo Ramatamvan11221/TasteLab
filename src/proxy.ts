@@ -1,4 +1,4 @@
-// src/proxy.ts (ganti dari middleware.ts)
+// src/proxy.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getCurrentSession } from "@/lib/auth-utils";
@@ -36,6 +36,7 @@ export async function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
+// 🔥 CONFIG UNTUK PROXY
 export const config = {
   matcher: [
     "/kitchen/:path*",

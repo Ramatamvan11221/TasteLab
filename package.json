@@ -4,7 +4,6 @@
   "private": true,
   "description": "TasteLab - Know What You Eat. Share What You Think.",
   "scripts": {
-    "lint": "eslint .",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -43,12 +42,12 @@
     "framer-motion": "12.9.2",
     "lucide-react": "0.469.0",
     "nanoid": "5.0.9",
-    "next": "16.0.1",
+    "next": "16.0.5",
     "postcss": "8.5.1",
     "prisma": "6.5.0",
     "qrcode": "1.5.4",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
     "react-hook-form": "7.54.2",
     "recharts": "2.15.1",
     "sharp": "0.33.5",
@@ -64,11 +63,10 @@
   "devDependencies": {
     "@types/node": "22.10.2",
     "@types/qrcode": "1.5.5",
-    "@types/react": "19.1.0",
-    "@types/react-dom": "19.1.0",
-    "baseline-browser-mapping": "^2.11.12",
+    "@types/react": "19.0.0",
+    "@types/react-dom": "19.0.0",
     "eslint": "9.17.0",
-    "eslint-config-next": "16.0.1",
+    "eslint-config-next": "16.0.5",
     "tsx": "4.19.2"
   },
   "engines": {

@@ -19,9 +19,8 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // 🔥 TAMBAHIN INI BIAR DYNAMIC ROUTES GAK ERROR
   experimental: {
-    authInterrupts: true, // Buat middleware auth
+    authInterrupts: true,
   },
   output: 'standalone',
 };
