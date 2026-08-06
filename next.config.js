@@ -8,7 +8,6 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
-      // Kalo pake UploadThing pake domain lain, tambahin juga
       {
         protocol: 'https',
         hostname: 'uploadthing.com',
@@ -17,14 +16,14 @@ const nextConfig = {
       },
     ],
   },
-  // Matiin ESLint di build (udah ada)
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  // Matiin TypeScript error di build (opsional)
   typescript: {
     ignoreBuildErrors: true,
   },
+  // 🔥 TAMBAHIN INI BIAR DYNAMIC ROUTES GAK ERROR
+  experimental: {
+    authInterrupts: true, // Buat middleware auth
+  },
+  output: 'standalone',
 };
 
 module.exports = nextConfig;
